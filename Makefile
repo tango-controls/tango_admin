@@ -9,9 +9,6 @@
 # $Revision$
 #
 # $Log$
-# Revision 1.1.1.1  2010/03/12 12:34:36  taurel
-# Initial check-in
-#
 #
 #
 # copyleft :    European Synchrotron Radiation Facility
@@ -25,9 +22,9 @@ BIN_DIR = ubuntu904
  
 TANGO_HOME   =  /segfs/tango/release
    
-INCLUDE_DIRS =  -I. -I$(TANGO_HOME)/$(BIN_DIR)/include
+INCLUDE_DIRS =  -I. -I$(TANGO_HOME)/$(BIN_DIR)/include \
 	       
-LIB_DIRS     =  -L $(TANGO_HOME)/$(BIN_DIR)/lib
+LIB_DIRS     =  -L $(TANGO_HOME)/$(BIN_DIR)/lib 
  
        
 CXXFLAGS = -g -D_REENTRANT $(INCLUDE_DIRS)		

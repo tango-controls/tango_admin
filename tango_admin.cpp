@@ -45,23 +45,13 @@ static const char *RcsId = "$Id$";
 //
 //-============================================================================
 
-#if HAVE_CONFIG_H
-#include <ac_config.h>
-#endif
-
 #include <iostream>
 #include <anyoption.h>
 #include <tango.h>
 
-#include <time.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-
 using namespace std;
 
-
-int ping_database(int);
+int ping_database();
 int check_device(char *);
 int add_server(char *,char *,char *);
 void list2vect(string &,vector<string> &);
@@ -69,8 +59,7 @@ int check_server(char *);
 int delete_server(char *,bool);
 int add_property(char *,char *,char *);
 int delete_property(char *,char *);
-int ping_network(int,bool);
-int check_net(bool);
+
 
 int main(int argc,char *argv[])
 {
@@ -82,21 +71,21 @@ int main(int argc,char *argv[])
 
 	opt->addUsage("Usage: " );
  	opt->addUsage(" --help  		Prints this help " );
-	opt->addUsage(" --ping-database	[max_time (s)] Ping database " );
+	opt->addUsage(" --ping-database	Ping database " );
 	opt->addUsage(" --check-device <dev>    Check if the device is defined in DB");
  	opt->addUsage(" --add-server <exec/inst> <class> <dev list (comma separated)>   Add a server in DB" );
  	opt->addUsage(" --delete-server <exec/inst> [--with-properties]   Delete a server from DB" );
 	opt->addUsage(" --check-server <exec/inst>   Check if a device server is defined in DB");
  	opt->addUsage(" --add-property <dev> <prop_name> <prop_value (comma separated for array)>    Add a device property in DB" );
 	opt->addUsage(" --delete-property <dev> <prop_name>   Delete a device property from DB ");
-	opt->addUsage(" --ping-network [max_time (s)] [-v] Ping network ");
+
 
 //
 // Define the command line options
 //
 
 	opt->setFlag("help",'h');
- 	opt->setFlag("ping-database");
+ 	opt->setFlag("ping-database",'c');
 	opt->setOption("add-server");
 	opt->setOption("delete-server");
 	opt->setFlag("with-properties");
@@ -104,7 +93,6 @@ int main(int argc,char *argv[])
 	opt->setOption("delete-property");
 	opt->setOption("check-device");
 	opt->setOption("check-server");
-	opt->setFlag("ping-network");
 
 //
 // Process cmd line
@@ -142,26 +130,20 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
-			opt->getFlag("ping-network") == true ||
 		    opt->getFlag("with-properties") == true)
-			cout << "Can't mix option --ping-database with other option(s)" << endl;
+			cout << "Can't mix option --check-database with other option(s)" << endl;
 
-		if (argc > 3)
+		if (argc != 2)
 		{
-			cout << "Bad argument number for option --ping-database" << endl;
+			cout << "Bad argument number for option --check-database" << endl;
 			opt->printUsage();
 			delete opt;
 			return 0;
 		}
 
+		cout << "Check database" << endl;
 		int ret;
-		if (argc == 2)
-			ret = ping_database(0);
-		else
-		{
-			int sec = atoi(argv[2]);
-			ret = ping_database(sec);
-		}
+		ret = ping_database();
 
 		delete opt;
 		return ret;
@@ -179,7 +161,6 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("add-server") != NULL ||
 			opt->getValue("check-server") != NULL ||
-			opt->getFlag("ping-network") == true ||
 		    opt->getFlag("with-properties") == true)
 			cout << "Can't mix option --add-server with other option(s)" << endl;
 		else
@@ -212,7 +193,6 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
-			opt->getFlag("ping-network") == true ||
 		    opt->getFlag("with-properties") == true)
 			cout << "Can't mix option --add-server with other option(s)" << endl;
 		else
@@ -245,7 +225,6 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("add-server") != NULL ||
 			opt->getValue("check-device") != NULL ||
-			opt->getFlag("ping-network") == true ||
 		    opt->getFlag("with-properties") == true)
 			cout << "Can't mix option --check-server with other option(s)" << endl;
 		else
@@ -276,7 +255,6 @@ int main(int argc,char *argv[])
 		    opt->getValue("add-property") != NULL ||
 			opt->getValue("check-server") != NULL ||
 			opt->getValue("check-device") != NULL ||
-			opt->getFlag("ping-network") == true ||
 		    opt->getValue("delete-property") != NULL)
 			cout << "Can't mix option --delete-server with other option(s)" << endl;
 		else
@@ -314,7 +292,6 @@ int main(int argc,char *argv[])
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
 		    opt->getFlag("with-properties") == true ||
-			opt->getFlag("ping-network") == true ||
 			opt->getFlag("ping-database") == true)
 			cout << "Can't mix option --add-property with other option(s)" << endl;
 		else
@@ -347,7 +324,6 @@ int main(int argc,char *argv[])
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
 		    opt->getFlag("with-properties") == true ||
-			opt->getFlag("ping-network") == true ||
 			opt->getFlag("ping-database") == true)
 			cout << "Can't mix option --delete-property with other option(s)" << endl;
 		else
@@ -367,73 +343,6 @@ int main(int argc,char *argv[])
 			return ret;
 		}
 	}
-
-//
-// --ping-network option
-//
-
-	if (opt->getFlag("ping-network") == true)
-	{
-		bool verbose = false;
-		
-		if (opt->getValue("add-server") != NULL ||
-			opt->getValue("delete-server") != NULL ||
-		    opt->getValue("add-property") != NULL ||
-		    opt->getValue("delete-property") != NULL ||
-			opt->getValue("check-device") != NULL ||
-			opt->getValue("check-server") != NULL ||
-			opt->getFlag("ping-database") == true ||
-		    opt->getFlag("with-properties") == true)
-			cout << "Can't mix option --ping-network with other option(s)" << endl;
-
-		if (argc > 4)
-		{
-			cout << "Bad argument number for option --ping-network" << endl;
-			opt->printUsage();
-			delete opt;
-			return 0;
-		}
-		else if (argc == 4)
-		{
-			if (strcmp(argv[3],"-v") != 0)
-			{
-				cout << "Bad argument for option --ping-network" << endl;
-				opt->printUsage();
-				delete opt;
-				return 0;
-			}
-			else
-				verbose = true;
-		}
-		else if (argc == 3)
-		{
-			if (strcmp(argv[2],"-v") == 0)
-			{
-				verbose = true;
-			}
-		}
-		
-		int ret;
-		if (argc == 2)
-			ret = ping_network(0,verbose);
-		else
-		{
-			int sec = 0;
-			sec = atoi(argv[2]);
-			if ((verbose == false) && (sec == 0))
-			{
-				cout << "Bad argument for option --ping-network" << endl;
-				opt->printUsage();
-				delete opt;
-				return 0;
-			}
-			ret = ping_network(sec,verbose);
-		}
-
-		delete opt;
-		return ret;
-	}
-
 //
 // Unknown choice
 //
@@ -453,61 +362,27 @@ int main(int argc,char *argv[])
 // 
 // description : 	This function connect to the database and executes
 //					one of its command in order to check the database
-//					connectivity.
-//
-// argument : in : 	- nb_sec : Max time (in sec) to do re-try in case of failure
+//					connectivity
 //
 // The function returns 0 is everything is fine. Otherwise, it returns -1
 //
 //--------------------------------------------------------------------------
 
-int ping_database(int nb_sec)
+int ping_database()
 {
 	int ret = 0;
 
-	int nb_loop;
-	bool infinite = false;
-
-	if (nb_sec == 0)
-		nb_loop = 1;
-	else if (nb_sec < 0)
+	try
 	{
-		infinite = true;
-		nb_loop = 2;
+		Tango::Database db;
+
+		string db_info;
+		db_info = db.get_info();
 	}
-	else
-		nb_loop = nb_sec << 1;
-
-//
-// re-try the call every 500 mS
-//
-
-	struct timespec ts;
-	ts.tv_sec = 0;
-	ts.tv_nsec = 500000000;
-
-	while(nb_loop > 0)
+	catch (Tango::DevFailed &e)
 	{
-		try
-		{
-			Tango::Database db;
-
-			string db_info;
-			db_info = db.get_info();
-			ret = 0;
-			nb_loop = 0;
-		}
-		catch (Tango::DevFailed &e)
-		{
-			ret = -1;
-			if (infinite == false)
-				--nb_loop;
-		}
-
-		if (nb_loop != 0)
-			nanosleep(&ts,NULL);
+		ret = -1;
 	}
-
 	return ret;	
 }
 
@@ -1002,143 +877,3 @@ void list2vect(string &dev_list,vector<string> &dev_names)
 	}
 }
 
-//+-------------------------------------------------------------------------
-//
-// method : 		ping_network
-// 
-// description : 	This function periodically chechs the network avaibility
-//
-// argument : in : 	- nb_sec : Max time (in sec) to do re-try in case of failure
-//					- verbose : Boolean flag set to true if some printing is required
-//
-// The function returns 0 is everything is fine. Otherwise, it returns -1
-//
-//--------------------------------------------------------------------------
-
-int ping_network(int nb_sec,bool verbose)
-{
-	int ret = 0;
-
-	int nb_loop;
-	bool infinite = false;
-
-	if (nb_sec == 0)
-		nb_loop = 1;
-	else if (nb_sec < 0)
-	{
-		infinite = true;
-		nb_loop = 2;
-	}
-	else
-		nb_loop = nb_sec << 1;
-
-//
-// re-try the call every 500 mS
-//
-
-	struct timespec ts;
-	ts.tv_sec = 0;
-	ts.tv_nsec = 500000000;
-
-	while(nb_loop > 0)
-	{
-
-		int res = check_net(verbose);
-		if (res == 0)
-		{
-			ret = 0;
-			nb_loop = 0;
-		}
-		else
-		{
-			ret = -1;
-			if (infinite == false)
-				--nb_loop;
-		}
-
-		if (nb_loop != 0)
-			nanosleep(&ts,NULL);
-	}
-
-	return ret;	
-}
-
-//+-------------------------------------------------------------------------
-//
-// method : 		check_net
-// 
-// description : 	This function connect to the network and check if it is
-//					fully ready.
-//
-// argument : in : 	- verbose : Flag set to true if some printing is required
-//
-// The function returns 0 is everything is fine. Otherwise, it returns -1
-//
-//--------------------------------------------------------------------------
-
-int check_net(bool verbose)
-{
-	int ret = 0;
-
-	char buffer[80];
-	string hostname;
-
-	if (gethostname(buffer,80) == 0)
-	{
-		hostname = buffer;
-		if (verbose == true)
-			cout << "Host name returned by gethostname function: " << hostname << endl;
-
-  		struct addrinfo hints;
-
-		memset(&hints,0,sizeof(struct addrinfo));
-
-  		hints.ai_flags     = AI_ADDRCONFIG;
-
-  		hints.ai_family    = AF_INET;
-  		hints.ai_socktype  = SOCK_STREAM;
-
-  		struct addrinfo	*info;
-		struct addrinfo *ptr;
-		char tmp_host[512];
-		int result;
-
-  		result = getaddrinfo(buffer, NULL, &hints, &info);
-
-		if (result == 0)
-		{
-			ptr = info;
-			if (verbose == true)
-				cout << "getaddrinfo() is a success" << endl;
-			while (ptr != NULL)
-			{
-    			if (getnameinfo(ptr->ai_addr,ptr->ai_addrlen,tmp_host,512,0,0,0) != 0)
-				{
-					if (verbose == true)
-						cout << "getnameinfo() call failed" << endl;
-					ret = -1;
-					break;
-				}
-				if (verbose == true)
-					cout << "Host name as returned by getnameinfo call: " << tmp_host << endl;
-				ptr = ptr->ai_next;
-			}
-
-			freeaddrinfo(info);
-		}
-		else
-		{
-			if (verbose == true)
-				cout << "getaddrinfo() call failed with returned value = " << result << endl;
-			ret = -1;
-		}
-	}
-	else
-	{
-		cout << "Cant retrieve server host name" << endl;
-		ret = -1;
-	}
-
-	return ret;
-
-}
