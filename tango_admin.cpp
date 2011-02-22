@@ -69,8 +69,8 @@ int check_server(char *);
 int delete_server(char *,bool);
 int add_property(char *,char *,char *);
 int delete_property(char *,char *);
-int ping_network(int,bool);
-int check_net(bool);
+int ping_network(int);
+int check_net();
 
 int main(int argc,char *argv[])
 {
@@ -89,7 +89,7 @@ int main(int argc,char *argv[])
 	opt->addUsage(" --check-server <exec/inst>   Check if a device server is defined in DB");
  	opt->addUsage(" --add-property <dev> <prop_name> <prop_value (comma separated for array)>    Add a device property in DB" );
 	opt->addUsage(" --delete-property <dev> <prop_name>   Delete a device property from DB ");
-	opt->addUsage(" --ping-network [max_time (s)] [-v] Ping network ");
+	opt->addUsage(" --ping-network [max_time (s)] Ping network ");
 
 //
 // Define the command line options
@@ -160,6 +160,13 @@ int main(int argc,char *argv[])
 		else
 		{
 			int sec = atoi(argv[2]);
+			if (sec < 0)
+			{
+				cout << "max_time can't be negative" << endl;
+				opt->printUsage();
+				delete opt;
+				return 0;
+			}
 			ret = ping_database(sec);
 		}
 
@@ -374,8 +381,6 @@ int main(int argc,char *argv[])
 
 	if (opt->getFlag("ping-network") == true)
 	{
-		bool verbose = false;
-		
 		if (opt->getValue("add-server") != NULL ||
 			opt->getValue("delete-server") != NULL ||
 		    opt->getValue("add-property") != NULL ||
@@ -386,48 +391,28 @@ int main(int argc,char *argv[])
 		    opt->getFlag("with-properties") == true)
 			cout << "Can't mix option --ping-network with other option(s)" << endl;
 
-		if (argc > 4)
+		if (argc > 3)
 		{
 			cout << "Bad argument number for option --ping-network" << endl;
 			opt->printUsage();
 			delete opt;
 			return 0;
 		}
-		else if (argc == 4)
-		{
-			if (strcmp(argv[3],"-v") != 0)
-			{
-				cout << "Bad argument for option --ping-network" << endl;
-				opt->printUsage();
-				delete opt;
-				return 0;
-			}
-			else
-				verbose = true;
-		}
-		else if (argc == 3)
-		{
-			if (strcmp(argv[2],"-v") == 0)
-			{
-				verbose = true;
-			}
-		}
-		
+
 		int ret;
 		if (argc == 2)
-			ret = ping_network(0,verbose);
+			ret = ping_network(0);
 		else
 		{
-			int sec = 0;
-			sec = atoi(argv[2]);
-			if ((verbose == false) && (sec == 0))
+			int sec = atoi(argv[2]);
+			if (sec < 0)
 			{
-				cout << "Bad argument for option --ping-network" << endl;
+				cout << "max_time can't be negative" << endl;
 				opt->printUsage();
 				delete opt;
 				return 0;
 			}
-			ret = ping_network(sec,verbose);
+			ret = ping_network(sec);
 		}
 
 		delete opt;
@@ -466,15 +451,8 @@ int ping_database(int nb_sec)
 	int ret = 0;
 
 	int nb_loop;
-	bool infinite = false;
-
 	if (nb_sec == 0)
 		nb_loop = 1;
-	else if (nb_sec < 0)
-	{
-		infinite = true;
-		nb_loop = 2;
-	}
 	else
 		nb_loop = nb_sec << 1;
 
@@ -500,8 +478,7 @@ int ping_database(int nb_sec)
 		catch (Tango::DevFailed &e)
 		{
 			ret = -1;
-			if (infinite == false)
-				--nb_loop;
+			--nb_loop;
 		}
 
 		if (nb_loop != 0)
@@ -1006,29 +983,22 @@ void list2vect(string &dev_list,vector<string> &dev_names)
 //
 // method : 		ping_network
 // 
-// description : 	This function periodically chechs the network avaibility
+// description : 	This function connect to the network and check if it is
+//					fully ready.
 //
 // argument : in : 	- nb_sec : Max time (in sec) to do re-try in case of failure
-//					- verbose : Boolean flag set to true if some printing is required
 //
 // The function returns 0 is everything is fine. Otherwise, it returns -1
 //
 //--------------------------------------------------------------------------
 
-int ping_network(int nb_sec,bool verbose)
+int ping_network(int nb_sec)
 {
 	int ret = 0;
 
 	int nb_loop;
-	bool infinite = false;
-
 	if (nb_sec == 0)
 		nb_loop = 1;
-	else if (nb_sec < 0)
-	{
-		infinite = true;
-		nb_loop = 2;
-	}
 	else
 		nb_loop = nb_sec << 1;
 
@@ -1043,7 +1013,7 @@ int ping_network(int nb_sec,bool verbose)
 	while(nb_loop > 0)
 	{
 
-		int res = check_net(verbose);
+		int res = check_net();
 		if (res == 0)
 		{
 			ret = 0;
@@ -1052,8 +1022,7 @@ int ping_network(int nb_sec,bool verbose)
 		else
 		{
 			ret = -1;
-			if (infinite == false)
-				--nb_loop;
+			--nb_loop;
 		}
 
 		if (nb_loop != 0)
@@ -1070,13 +1039,13 @@ int ping_network(int nb_sec,bool verbose)
 // description : 	This function connect to the network and check if it is
 //					fully ready.
 //
-// argument : in : 	- verbose : Flag set to true if some printing is required
+// argument : in : 	- nb_sec : Max time (in sec) to do re-try in case of failure
 //
 // The function returns 0 is everything is fine. Otherwise, it returns -1
 //
 //--------------------------------------------------------------------------
 
-int check_net(bool verbose)
+int check_net()
 {
 	int ret = 0;
 
@@ -1086,8 +1055,6 @@ int check_net(bool verbose)
 	if (gethostname(buffer,80) == 0)
 	{
 		hostname = buffer;
-		if (verbose == true)
-			cout << "Host name returned by gethostname function: " << hostname << endl;
 
   		struct addrinfo hints;
 
@@ -1108,30 +1075,20 @@ int check_net(bool verbose)
 		if (result == 0)
 		{
 			ptr = info;
-			if (verbose == true)
-				cout << "getaddrinfo() is a success" << endl;
 			while (ptr != NULL)
 			{
     			if (getnameinfo(ptr->ai_addr,ptr->ai_addrlen,tmp_host,512,0,0,0) != 0)
 				{
-					if (verbose == true)
-						cout << "getnameinfo() call failed" << endl;
 					ret = -1;
 					break;
 				}
-				if (verbose == true)
-					cout << "Host name as returned by getnameinfo call: " << tmp_host << endl;
 				ptr = ptr->ai_next;
 			}
 
 			freeaddrinfo(info);
 		}
 		else
-		{
-			if (verbose == true)
-				cout << "getaddrinfo() call failed with returned value = " << result << endl;
 			ret = -1;
-		}
 	}
 	else
 	{
