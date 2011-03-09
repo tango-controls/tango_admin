@@ -58,6 +58,8 @@ static const char *RcsId = "$Id$";
 #include <sys/socket.h>
 #include <netdb.h>
 
+#include <stdlib.h>
+
 using namespace std;
 
 
@@ -71,6 +73,9 @@ int add_property(char *,char *,char *);
 int delete_property(char *,char *);
 int ping_network(int,bool);
 int check_net(bool);
+int tac_enabled(void);
+int ping_device(char *,int);
+int check_dev(char *);
 
 int main(int argc,char *argv[])
 {
@@ -89,6 +94,8 @@ int main(int argc,char *argv[])
 	opt->addUsage(" --check-server <exec/inst>   Check if a device server is defined in DB");
  	opt->addUsage(" --add-property <dev> <prop_name> <prop_value (comma separated for array)>    Add a device property in DB" );
 	opt->addUsage(" --delete-property <dev> <prop_name>   Delete a device property from DB ");
+	opt->addUsage(" --tac-enabled Check if the TAC (Tango Access Control) is enabled");
+	opt->addUsage(" --ping-device <dev> [max_time (s)] Check if the device is running");
 	opt->addUsage(" --ping-network [max_time (s)] [-v] Ping network ");
 
 //
@@ -104,7 +111,9 @@ int main(int argc,char *argv[])
 	opt->setOption("delete-property");
 	opt->setOption("check-device");
 	opt->setOption("check-server");
+	opt->setOption("ping-device");
 	opt->setFlag("ping-network");
+	opt->setFlag("tac-enabled");
 
 //
 // Process cmd line
@@ -143,6 +152,7 @@ int main(int argc,char *argv[])
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
 			opt->getFlag("ping-network") == true ||
+			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
 			cout << "Can't mix option --ping-database with other option(s)" << endl;
 
@@ -180,6 +190,7 @@ int main(int argc,char *argv[])
 			opt->getValue("add-server") != NULL ||
 			opt->getValue("check-server") != NULL ||
 			opt->getFlag("ping-network") == true ||
+			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
 			cout << "Can't mix option --add-server with other option(s)" << endl;
 		else
@@ -213,6 +224,7 @@ int main(int argc,char *argv[])
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
 			opt->getFlag("ping-network") == true ||
+			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
 			cout << "Can't mix option --add-server with other option(s)" << endl;
 		else
@@ -246,6 +258,7 @@ int main(int argc,char *argv[])
 			opt->getValue("add-server") != NULL ||
 			opt->getValue("check-device") != NULL ||
 			opt->getFlag("ping-network") == true ||
+			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
 			cout << "Can't mix option --check-server with other option(s)" << endl;
 		else
@@ -277,6 +290,7 @@ int main(int argc,char *argv[])
 			opt->getValue("check-server") != NULL ||
 			opt->getValue("check-device") != NULL ||
 			opt->getFlag("ping-network") == true ||
+			opt->getFlag("tac-enabled") == true ||
 		    opt->getValue("delete-property") != NULL)
 			cout << "Can't mix option --delete-server with other option(s)" << endl;
 		else
@@ -314,6 +328,7 @@ int main(int argc,char *argv[])
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
 		    opt->getFlag("with-properties") == true ||
+			opt->getFlag("tac-enabled") == true ||
 			opt->getFlag("ping-network") == true ||
 			opt->getFlag("ping-database") == true)
 			cout << "Can't mix option --add-property with other option(s)" << endl;
@@ -348,6 +363,7 @@ int main(int argc,char *argv[])
 			opt->getValue("check-server") != NULL ||
 		    opt->getFlag("with-properties") == true ||
 			opt->getFlag("ping-network") == true ||
+			opt->getFlag("tac-enabled") == true ||
 			opt->getFlag("ping-database") == true)
 			cout << "Can't mix option --delete-property with other option(s)" << endl;
 		else
@@ -383,6 +399,7 @@ int main(int argc,char *argv[])
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
 			opt->getFlag("ping-database") == true ||
+			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
 			cout << "Can't mix option --ping-network with other option(s)" << endl;
 
@@ -435,6 +452,79 @@ int main(int argc,char *argv[])
 	}
 
 //
+// --tac-enabled option
+//
+
+	if (opt->getFlag("tac-enabled") == true)
+	{
+		if (opt->getValue("add-server") != NULL ||
+			opt->getValue("delete-server") != NULL ||
+		    opt->getValue("add-property") != NULL ||
+		    opt->getValue("delete-property") != NULL ||
+			opt->getValue("check-device") != NULL ||
+			opt->getValue("check-server") != NULL ||
+			opt->getFlag("ping-network") == true ||
+		    opt->getFlag("with-properties") == true)
+			cout << "Can't mix option --tac-enabled with other option(s)" << endl;
+
+		if (argc > 2)
+		{
+			cout << "Bad argument number for option --tac-enabled" << endl;
+			opt->printUsage();
+			delete opt;
+			return 0;
+		}
+
+		int ret;
+		ret = tac_enabled();
+
+		delete opt;
+cout << "tac-enabled returns" << ret << endl;
+		return ret;
+	}
+
+//
+// --ping-device option
+//
+
+
+	if (opt->getValue("ping-device") != NULL)
+	{
+		if (opt->getValue("delete-server") != NULL ||
+		    opt->getValue("add-property") != NULL ||
+		    opt->getValue("delete-property") != NULL ||
+			opt->getValue("add-server") != NULL ||
+			opt->getValue("check-server") != NULL ||
+			opt->getFlag("ping-network") == true ||
+			opt->getFlag("tac-enabled") == true ||
+		    opt->getFlag("with-properties") == true)
+			cout << "Can't mix option --ping-device with other option(s)" << endl;
+		else
+		{
+			int ret;
+			int sec = 0;
+
+			if (argc < 3 || argc > 4)
+			{
+				cout << "Bad argument number for option --ping_device" << endl;
+				opt->printUsage();
+				delete opt;
+				return 0;
+			}
+			else if (argc == 4)
+			{
+				sec = atoi(argv[3]);
+			}
+
+			ret = ping_device(opt->getValue("ping-device"),sec);
+
+			delete opt;
+cout << "ping-device returns " << ret << endl;
+			return ret;
+		}
+	}
+
+//
 // Unknown choice
 //
 
@@ -464,6 +554,8 @@ int main(int argc,char *argv[])
 int ping_database(int nb_sec)
 {
 	int ret = 0;
+
+	setenv("SUPER_TANGO","true",1);
 
 	int nb_loop;
 	bool infinite = false;
@@ -639,6 +731,8 @@ int add_server(char *d_name,char *c_name,char *d_list)
 // Create server in DB
 // Dont forget to add the admin device
 //
+
+	setenv("SUPER_TANGO","true",1);
 
 	try
 	{
@@ -1136,6 +1230,136 @@ int check_net(bool verbose)
 	else
 	{
 		cout << "Cant retrieve server host name" << endl;
+		ret = -1;
+	}
+
+	return ret;
+
+}
+
+//+-------------------------------------------------------------------------
+//
+// method : 		tac_enabled
+// 
+// description : 	This function check in DB if the TAC is enabled
+//
+// The function returns 0 if the TAC is disabled. Otherwise, it returns 1
+//
+//--------------------------------------------------------------------------
+
+int tac_enabled(void)
+{
+
+	int ret = 1;
+
+	setenv("SUPER_TANGO","true",1);
+
+	try
+	{
+		Tango::Database db;
+
+		string servicename("AccessControl");
+		string instname("tango");
+		Tango::DbDatum db_datum = db.get_services(servicename,instname);
+		vector<string> service_list;
+		db_datum >> service_list;
+
+		if (service_list.size() == 0)
+			ret = 0;
+	}
+	catch (Tango::DevFailed &e)
+	{
+		ret = 0;
+	}
+
+	return ret;
+}
+
+//+-------------------------------------------------------------------------
+//
+// method : 		ping_device
+// 
+// description : 	This function periodically chechs a device avaibility
+//
+// argument : in : 	- nb_sec : Max time (in sec) to do re-try in case of failure
+//					- dev_name : The device name
+//
+// The function returns 0 is everything is fine. Otherwise, it returns -1
+//
+//--------------------------------------------------------------------------
+
+int ping_device(char *dev_name,int nb_sec)
+{
+	int ret = 0;
+
+	int nb_loop;
+	bool infinite = false;
+
+	if (nb_sec == 0)
+		nb_loop = 1;
+	else if (nb_sec < 0)
+	{
+		infinite = true;
+		nb_loop = 2;
+	}
+	else
+		nb_loop = nb_sec << 1;
+
+//
+// re-try the call every 500 mS
+//
+
+	struct timespec ts;
+	ts.tv_sec = 0;
+	ts.tv_nsec = 500000000;
+
+	while(nb_loop > 0)
+	{
+
+		int res = check_dev(dev_name);
+		if (res == 0)
+		{
+			ret = 0;
+			nb_loop = 0;
+		}
+		else
+		{
+			ret = -1;
+			if (infinite == false)
+				--nb_loop;
+		}
+
+		if (nb_loop != 0)
+			nanosleep(&ts,NULL);
+	}
+
+	return ret;	
+}
+
+//+-------------------------------------------------------------------------
+//
+// method : 		check_dev
+// 
+// description : 	This function connect to a device and try to ping it
+//
+// argument : in : 	- dev_name : The device name
+//
+// The function returns 0 is everything is fine. Otherwise, it returns -1
+//
+//--------------------------------------------------------------------------
+
+int check_dev(char *dev_name)
+{
+	int ret = 0;
+
+	try
+	{
+		Tango::DeviceProxy dev(dev_name);
+
+		dev.ping();
+	}
+	catch (Tango::DevFailed &e)
+	{
 		ret = -1;
 	}
 
