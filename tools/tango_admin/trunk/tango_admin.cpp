@@ -479,7 +479,6 @@ int main(int argc,char *argv[])
 		ret = tac_enabled();
 
 		delete opt;
-cout << "tac-enabled returns" << ret << endl;
 		return ret;
 	}
 
@@ -519,7 +518,6 @@ cout << "tac-enabled returns" << ret << endl;
 			ret = ping_device(opt->getValue("ping-device"),sec);
 
 			delete opt;
-cout << "ping-device returns " << ret << endl;
 			return ret;
 		}
 	}
