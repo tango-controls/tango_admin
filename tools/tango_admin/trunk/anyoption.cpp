@@ -176,14 +176,32 @@ AnyOption::alloc()
 bool
 AnyOption::doubleOptStorage()
 {
-	options = (const char**)realloc( options,  
+	const char **tmp_ptr;
+	int *tmp_ptr_int;
+	tmp_ptr = options;
+	options = (const char**)realloc( tmp_ptr,  
 			((2*max_options)+1) * sizeof( const char*) );
-	optiontype = (int*) realloc(  optiontype ,  
-			((2 * max_options)+1)* sizeof(int) );	
-	optionindex = (int*) realloc(  optionindex,  
-			((2 * max_options)+1) * sizeof(int) );	
-	if( options == NULL || optiontype == NULL || optionindex == NULL )
+	if( options == NULL)
+	{
+		free(tmp_ptr);
 		return false;
+	}
+	tmp_ptr_int = optiontype;
+	optiontype = (int*) realloc(  tmp_ptr_int ,  
+			((2 * max_options)+1)* sizeof(int) );
+	if( optiontype == NULL)
+	{
+		free(tmp_ptr_int);
+		return false;
+	}
+	tmp_ptr_int = optionindex;
+	optionindex = (int*) realloc(  tmp_ptr_int,  
+			((2 * max_options)+1) * sizeof(int) );
+	if (optionindex == NULL)
+	{
+		free(tmp_ptr_int);
+		return false;
+	}
 	/* init new storage */
 	for( int i = max_options ; i < 2*max_options ; i++ ){
 		options[i] = NULL;
@@ -197,16 +215,32 @@ AnyOption::doubleOptStorage()
 bool
 AnyOption::doubleCharStorage()
 {
-	optionchars = (char*) realloc( optionchars,  
+	char *tmp_ptr;
+	int *tmp_ptr_int;
+	tmp_ptr = optionchars;
+	optionchars = (char*) realloc( tmp_ptr,  
 			((2*max_char_options)+1)*sizeof(char) );
-	optchartype = (int*) realloc( optchartype,  
-			((2*max_char_options)+1)*sizeof(int) );	
-	optcharindex = (int*) realloc( optcharindex,  
-			((2*max_char_options)+1)*sizeof(int) );	
-	if( optionchars == NULL || 
-	    optchartype == NULL || 
-	    optcharindex == NULL )
+	if( optionchars == NULL)
+	{
+		free(tmp_ptr);
 		return false;
+	}
+	tmp_ptr_int = optchartype;
+	optchartype = (int*) realloc( tmp_ptr_int,  
+			((2*max_char_options)+1)*sizeof(int) );
+	if (optchartype == NULL)
+	{
+		free(tmp_ptr_int);
+		return false;
+	}
+	tmp_ptr_int = optcharindex;
+	optcharindex = (int*) realloc( tmp_ptr_int,  
+			((2*max_char_options)+1)*sizeof(int) );
+	if (optcharindex == NULL)
+	{
+		free(tmp_ptr_int);
+		return false;
+	}
 	/* init new storage */
 	for( int i = max_char_options ; i < 2*max_char_options ; i++ ){
 		optionchars[i] = '0';
@@ -235,13 +269,20 @@ AnyOption::doubleUsageStorage()
 void
 AnyOption::cleanup()
 {
-	free (options);
-	free (optiontype);
-	free (optionindex);	
-	free (optionchars);
-	free (optchartype);
-	free (optcharindex);
-	free (usage);
+	if (options != NULL)
+		free (options);
+	if (optiontype != NULL)
+		free (optiontype);
+	if (optionindex != NULL)
+		free (optionindex);
+	if (optionchars != NULL)
+		free (optionchars);
+	if (optchartype != NULL)
+		free (optchartype);
+	if (optcharindex != NULL)
+		free (optcharindex);
+	if (usage != NULL)
+		free (usage);
 	if( values != NULL )
 		free (values);
 	if( new_argv != NULL )
