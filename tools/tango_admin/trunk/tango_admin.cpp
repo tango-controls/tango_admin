@@ -568,11 +568,30 @@ int ping_database(int nb_sec)
 	else
 		nb_loop = nb_sec << 1;
 
+
+	struct timespec ts;
+	ts.tv_sec = 0;
+	ts.tv_nsec = 500000000;
+
+//
+// First sleep for 1 sec before trying to access the db
+// This was needed when ported to Natty (Ubuntu 11.04) in the
+// tango-db startup script. Db process did not start if tango 
+// admin starts pinging db device too early !!
+//
+
+	if (nb_loop != 1)
+	{
+		ts.tv_sec = 1;
+		ts.tv_nsec = 0;
+
+		nanosleep(&ts,NULL);
+	}
+
 //
 // re-try the call every 500 mS
 //
 
-	struct timespec ts;
 	ts.tv_sec = 0;
 	ts.tv_nsec = 500000000;
 
