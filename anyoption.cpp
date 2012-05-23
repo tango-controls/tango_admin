@@ -254,10 +254,12 @@ AnyOption::doubleCharStorage()
 bool
 AnyOption::doubleUsageStorage()
 {
-	usage = (const char**)realloc( usage,  
-			((2*max_usage_lines)+1) * sizeof( const char*) );
-	if ( usage == NULL )
+	const char **new_usage = (const char**)realloc( usage, ((2*max_usage_lines)+1) * sizeof( const char*) );
+	if ( new_usage == NULL ) {
+		free(usage);
 		return false;
+	}
+	usage = new_usage;
 	for( int i = max_usage_lines ; i < 2*max_usage_lines ; i++ )
 		usage[i] = NULL;
 	max_usage_lines = 2 * max_usage_lines ;
@@ -784,9 +786,9 @@ AnyOption::matchChar( char c )
 bool
 AnyOption::valueStoreOK( )
 {
-	int size= 0;
 	if( !set ){
 		if( g_value_counter > 0 ){
+			int size = 0;
 			size = g_value_counter * sizeof(char*);
 			values = (char**)malloc( size );	
 			for( int i = 0 ; i < g_value_counter ; i++)
