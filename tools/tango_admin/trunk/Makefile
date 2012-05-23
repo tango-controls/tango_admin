@@ -21,7 +21,7 @@
 #=============================================================================
 
 CC = c++
-BIN_DIR = ubuntu904
+BIN_DIR = ubuntu1204
  
 TANGO_HOME   =  /segfs/tango/release
    
@@ -30,10 +30,10 @@ INCLUDE_DIRS =  -I. -I$(TANGO_HOME)/$(BIN_DIR)/include
 LIB_DIRS     =  -L $(TANGO_HOME)/$(BIN_DIR)/lib
  
        
-CXXFLAGS = -g -D_REENTRANT $(INCLUDE_DIRS)		
+CXXFLAGS = -g -D_REENTRANT -std=c++0x $(INCLUDE_DIRS)		
 LFLAGS =   -g $(LIB_DIRS) \
  	   -ltango -llog4tango \
-	   -lCOS4 -lomniORB4 -lomniDynamic4 -lomnithread -lpthread
+	   -lCOS4 -lomniORB4 -lomniDynamic4 -lomnithread -lpthread -lzmq -ldl
 
 %.o: %.cpp 
 	$(CC) $(CXXFLAGS) -c $<

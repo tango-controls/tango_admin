@@ -885,7 +885,7 @@ int delete_server(char *d_name,bool with_res)
 // Delete all device properties
 //
 
-				if (prop_list.size() != 0)
+				if (prop_list.empty() == false)
 				{
 					Tango::DbData dbd;
 					
@@ -1281,7 +1281,7 @@ int tac_enabled(void)
 		vector<string> service_list;
 		db_datum >> service_list;
 
-		if (service_list.size() == 0)
+		if (service_list.empty() == true)
 			ret = 0;
 	}
 	catch (Tango::DevFailed &e)
