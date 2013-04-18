@@ -77,6 +77,7 @@ int tac_enabled(void);
 int ping_device(char *,int);
 int check_dev(char *);
 
+
 int main(int argc,char *argv[])
 {
 	AnyOption *opt = new AnyOption();
