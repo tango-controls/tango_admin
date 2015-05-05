@@ -21,7 +21,7 @@
 #=============================================================================
 
 CC = c++
-BIN_DIR = ubuntu1204
+BIN_DIR = ubuntu1404
  
 TANGO_HOME   =  /segfs/tango/release
    
