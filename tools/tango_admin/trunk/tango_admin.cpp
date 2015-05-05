@@ -68,6 +68,8 @@ int check_device(char *);
 int add_server(char *,char *,char *);
 void list2vect(string &,vector<string> &);
 int check_server(char *);
+int server_list();
+int server_instance_list(char *);
 int delete_server(char *,bool);
 int add_property(char *,char *,char *);
 int delete_property(char *,char *);
@@ -93,6 +95,8 @@ int main(int argc,char *argv[])
  	opt->addUsage(" --add-server <exec/inst> <class> <dev list (comma separated)>   Add a server in DB" );
  	opt->addUsage(" --delete-server <exec/inst> [--with-properties]   Delete a server from DB" );
 	opt->addUsage(" --check-server <exec/inst>   Check if a device server is defined in DB");
+	opt->addUsage(" --server-list  Display list of server names");
+	opt->addUsage(" --server-instance-list <exec>   Display list of server instances for the given server name");
  	opt->addUsage(" --add-property <dev> <prop_name> <prop_value (comma separated for array)>    Add a device property in DB" );
 	opt->addUsage(" --delete-property <dev> <prop_name>   Delete a device property from DB ");
 	opt->addUsage(" --tac-enabled Check if the TAC (Tango Access Control) is enabled");
@@ -112,6 +116,8 @@ int main(int argc,char *argv[])
 	opt->setOption("delete-property");
 	opt->setOption("check-device");
 	opt->setOption("check-server");
+	opt->setFlag("server-list");
+	opt->setOption("server-instance-list");
 	opt->setOption("ping-device");
 	opt->setFlag("ping-network");
 	opt->setFlag("tac-enabled");
@@ -152,6 +158,8 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("server-list") == true ||
 			opt->getFlag("ping-network") == true ||
 			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
@@ -190,6 +198,8 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("add-server") != NULL ||
 			opt->getValue("check-server") != NULL ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("server-list") == true ||
 			opt->getFlag("ping-network") == true ||
 			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
@@ -224,6 +234,8 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("server-list") == true ||
 			opt->getFlag("ping-network") == true ||
 			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
@@ -258,6 +270,8 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("add-server") != NULL ||
 			opt->getValue("check-device") != NULL ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("server-list") == true ||
 			opt->getFlag("ping-network") == true ||
 			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
@@ -281,6 +295,76 @@ int main(int argc,char *argv[])
 	}
 
 //
+// --server-list option
+//
+
+
+	else if (opt->getFlag("server-list") == true)
+	{
+		if (opt->getValue("delete-server") != NULL ||
+		    opt->getValue("add-property") != NULL ||
+		    opt->getValue("delete-property") != NULL ||
+			opt->getValue("add-server") != NULL ||
+			opt->getValue("check-device") != NULL ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("ping-network") == true ||
+			opt->getFlag("tac-enabled") == true ||
+		    opt->getFlag("with-properties") == true)
+			cout << "Can't mix option --server-list with other option(s)" << endl;
+		else
+		{
+			if (argc != 2)
+			{
+				cout << "Bad argument number for option --server-list" << endl;
+				opt->printUsage();
+				delete opt;
+				return 0;
+			}
+
+			int ret;
+			ret = server_list();
+
+			delete opt;
+			return ret;
+		}
+	}
+
+//
+// --server-instance-list option
+//
+
+
+	else if (opt->getValue("server-instance-list") != NULL)
+	{
+		if (opt->getValue("delete-server") != NULL ||
+		    opt->getValue("add-property") != NULL ||
+		    opt->getValue("delete-property") != NULL ||
+			opt->getValue("add-server") != NULL ||
+			opt->getValue("check-device") != NULL ||
+			opt->getFlag("server-list") == true ||
+			opt->getFlag("ping-network") == true ||
+			opt->getFlag("tac-enabled") == true ||
+		    opt->getFlag("with-properties") == true)
+			cout << "Can't mix option --server-instance-list with other option(s)" << endl;
+		else
+		{
+			if (argc != 3)
+			{
+				cout << "Bad argument number for option --server-instance-list" << endl;
+				opt->printUsage();
+				delete opt;
+				return 0;
+			}
+
+			int ret;
+			ret = server_instance_list(opt->getValue("server-instance-list"));
+
+			delete opt;
+			return ret;
+		}
+	}
+
+//
 // --delete-server option
 //
 
@@ -290,6 +374,8 @@ int main(int argc,char *argv[])
 		    opt->getValue("add-property") != NULL ||
 			opt->getValue("check-server") != NULL ||
 			opt->getValue("check-device") != NULL ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("server-list") == true ||
 			opt->getFlag("ping-network") == true ||
 			opt->getFlag("tac-enabled") == true ||
 		    opt->getValue("delete-property") != NULL)
@@ -328,7 +414,9 @@ int main(int argc,char *argv[])
 			opt->getValue("add-server") != NULL ||
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
-		    opt->getFlag("with-properties") == true ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("server-list") == true ||
+		        opt->getFlag("with-properties") == true ||
 			opt->getFlag("tac-enabled") == true ||
 			opt->getFlag("ping-network") == true ||
 			opt->getFlag("ping-database") == true)
@@ -362,6 +450,8 @@ int main(int argc,char *argv[])
 			opt->getValue("add-server") != NULL ||
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("server-list") == true ||
 		    opt->getFlag("with-properties") == true ||
 			opt->getFlag("ping-network") == true ||
 			opt->getFlag("tac-enabled") == true ||
@@ -399,6 +489,8 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("server-list") == true ||
 			opt->getFlag("ping-database") == true ||
 			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
@@ -464,6 +556,8 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("check-device") != NULL ||
 			opt->getValue("check-server") != NULL ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("server-list") == true ||
 			opt->getFlag("ping-network") == true ||
 		    opt->getFlag("with-properties") == true)
 			cout << "Can't mix option --tac-enabled with other option(s)" << endl;
@@ -495,6 +589,8 @@ int main(int argc,char *argv[])
 		    opt->getValue("delete-property") != NULL ||
 			opt->getValue("add-server") != NULL ||
 			opt->getValue("check-server") != NULL ||
+			opt->getValue("server-instance-list") != NULL ||
+			opt->getFlag("server-list") == true ||
 			opt->getFlag("ping-network") == true ||
 			opt->getFlag("tac-enabled") == true ||
 		    opt->getFlag("with-properties") == true)
@@ -803,6 +899,81 @@ int check_server(char *d_name)
 	dev_name = dev_name + ds_name;
 
 	ret = check_device((char *)dev_name.c_str());
+
+	return ret;
+}
+
+//+-------------------------------------------------------------------------
+//
+// method : 		server_list
+// 
+// description : 	This function lists all server names
+//
+// The function returns 0 if at least one server is defined. Otherwise returns -1
+//
+//--------------------------------------------------------------------------
+
+int server_list()
+{
+	int ret = 0;
+
+	try 
+	{
+		Tango::Database db;
+
+		vector<string> servers;
+		db.get_server_name_list() >> servers; 
+		for(int idx = 0; idx < servers.size(); ++idx)
+		{
+			cout << servers[idx] << " ";
+		}
+		cout << endl;
+	}
+	catch (Tango::DevFailed &e)
+	{
+		ret = -1;
+	}
+
+	return ret;
+}
+
+//+-------------------------------------------------------------------------
+//
+// method : 		server_instance_list
+// 
+// description : 	This function lists all server instances for the given
+//                      server name
+//
+// argument : in : 	- s_name : The server name
+//
+// The function returns 0 is the server name is defined. Otherwise returns -1
+//
+//--------------------------------------------------------------------------
+
+int server_instance_list(char *s_name)
+{
+	int ret = 0;
+
+	try 
+	{
+		Tango::Database db;
+
+		string server_name = s_name;
+		size_t start_pos = server_name.size() + 1;
+		server_name += "/*";
+
+		vector<string> servers;
+		db.get_server_list(server_name) >> servers; 
+		for(int idx = 0; idx < servers.size(); ++idx)
+		{
+			cout << servers[idx].substr(start_pos) << " ";
+		}
+		cout << endl;
+	}
+	catch (Tango::DevFailed &e)
+	{
+		ret = -1;
+	}
 
 	return ret;
 }
