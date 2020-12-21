@@ -19,4 +19,4 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${
 target_compile_options(${PROJECT_NAME} PUBLIC -std=c++0x ${TANGO_PKG_CFLAGS_OTHER})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${TANGO_PKG_LIBRARIES} ${CMAKE_DL_LIBS})
 
-#TODO install
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
